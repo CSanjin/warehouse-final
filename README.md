@@ -81,14 +81,16 @@ mvn clean install -DskipTests
 
 ## Docker 容器化部署（Ubuntu 虚拟机 / Windows）
 
-项目提供 Docker Compose 集群方案，满足课程设计：**Web 容器 + MySQL 容器 + 数据卷 + 自定义网络**。
+**精简版（课程最低要求）**：仅 2 个容器 `warehouse-web` + `warehouse-mysql`，含数据卷与自定义网络，4GB 内存可运行。
 
 **Ubuntu 虚拟机：**
 
 ```bash
-sudo bash docker/install-docker-ubuntu.sh   # 首次安装 Docker
-bash docker/start.sh                        # 构建并启动集群
-bash docker/verify.sh                       # 验收演示
+sudo apt-get install -y docker.io docker-compose-v2   # 首次安装 Docker
+cd ~/warehouse-cursor
+cp docker/.env.example .env
+bash docker/start.sh        # 约 5~10 分钟
+bash docker/verify.sh       # 验收
 ```
 
 **Windows：**
@@ -97,5 +99,6 @@ bash docker/verify.sh                       # 验收演示
 .\docker\start.ps1
 ```
 
-- Web 访问：`http://<虚拟机IP>` 或 `http://localhost`
+- Web 访问：`http://<虚拟机IP>/`
+- 完整微服务集群：`docker compose -f docker-compose.full.yml up -d --build`
 - 详细说明见 [docker/README.md](docker/README.md)

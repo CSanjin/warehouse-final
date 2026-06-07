@@ -1,0 +1,48 @@
+# 课程精简版：仅构建 warehouse-goods（Web + API），无需 Nacos/Gateway/前端 npm
+FROM maven:3.9-eclipse-temurin-8 AS builder
+
+WORKDIR /build
+COPY docker/maven/settings.xml /root/.m2/settings.xml
+
+COPY pom.xml .
+COPY warehouse-common/pom.xml warehouse-common/
+COPY warehouse-gateway/pom.xml warehouse-gateway/
+COPY warehouse-user/pom.xml warehouse-user/
+COPY warehouse-goods/pom.xml warehouse-goods/
+COPY warehouse-base/pom.xml warehouse-base/
+COPY warehouse-stock/pom.xml warehouse-stock/
+COPY warehouse-inout/pom.xml warehouse-inout/
+COPY warehouse-check/pom.xml warehouse-check/
+
+RUN mvn -B dependency:go-offline -pl warehouse-goods -am || true
+
+COPY warehouse-common warehouse-common
+COPY warehouse-goods warehouse-goods
+
+RUN mvn -B package -DskipTests -pl warehouse-goods -am
+
+FROM eclipse-temurin:8-jre-jammy
+
+LABEL component="warehouse-web-minimal"
+
+RUN groupadd -r warehouse && useradd -r -g warehouse warehouse \
+    && apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY --from=builder /build/warehouse-goods/target/*.jar /app/app.jar
+RUN chown -R warehouse:warehouse /app
+
+USER warehouse
+
+ENV JAVA_OPTS="-Xms128m -Xmx384m -Djava.security.egd=file:/dev/./urandom"
+ENV TZ=Asia/Shanghai
+ENV SPRING_PROFILES_ACTIVE=docker
+ENV SERVER_PORT=80
+
+EXPOSE 80
+
+HEALTHCHECK --interval=15s --timeout=5s --retries=8 --start-period=90s \
+  CMD curl -sf "http://127.0.0.1/api/goods/page?current=1&size=1" || exit 1
+
+ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -jar /app/app.jar"]

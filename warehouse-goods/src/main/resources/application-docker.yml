@@ -1,0 +1,28 @@
+# Docker 精简部署：无需 Nacos / Sentinel / 其他中间件
+server:
+  port: 80
+
+spring:
+  cloud:
+    nacos:
+      discovery:
+        enabled: false
+    sentinel:
+      enabled: false
+    discovery:
+      enabled: false
+    service-registry:
+      auto-registration:
+        enabled: false
+    openfeign:
+      sentinel:
+        enabled: false
+  autoconfigure:
+    exclude:
+      - com.alibaba.cloud.nacos.discovery.NacosDiscoveryAutoConfiguration
+      - com.alibaba.cloud.nacos.registry.NacosServiceRegistryAutoConfiguration
+      - com.alibaba.cloud.sentinel.SentinelAutoConfiguration
+
+logging:
+  level:
+    com.warehouse: info

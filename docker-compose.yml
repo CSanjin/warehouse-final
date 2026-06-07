@@ -1,35 +1,15 @@
-# 仓储微服务 Docker Compose 集群部署
-# 课程要点：Web 容器 + MySQL 容器 + 自定义网络 + 数据卷持久化
+# 仓储系统 Docker 精简部署（课程最低要求）
+# 仅 2 个容器：Web 应用 + MySQL 数据库
+# 含：自定义网络 warehouse-net + 命名数据卷
 #
-# 启动：copy docker\.env.example .env 后执行
-#   docker compose up -d --build
-# 访问：http://localhost  （Web 容器，Nginx 反向代理 Gateway）
-
+# 启动：bash docker/start.sh
+# 访问：http://<虚拟机IP>/
+# 完整微服务集群见 docker-compose.full.yml
 
 version: "3.8"
 
-x-java-common: &java-common
-  restart: unless-stopped
-  networks:
-    - warehouse-net
-  depends_on:
-    mysql:
-      condition: service_healthy
-    nacos:
-      condition: service_started
-  environment: &java-env
-    TZ: Asia/Shanghai
-    # 优先使用自定义网段 IP 注册到 Nacos，保证容器间 Feign/Gateway 可互通
-    SPRING_CLOUD_INETUTILS_PREFERRED_NETWORKS: 172.28
-    SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
-    SPRING_DATASOURCE_USERNAME: root
-    SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-    SPRING_CLOUD_SENTINEL_TRANSPORT_DASHBOARD: sentinel:8858
-    ROCKETMQ_NAME_SERVER: rocketmq-nameserver:9876
-    SEATA_ENABLED: "false"
-
 services:
-  # ========== 数据层：MySQL（持久化 + 数据卷） ==========
+  # ========== 数据库容器（数据持久化） ==========
   mysql:
     image: mysql:8.0
     container_name: warehouse-mysql
@@ -43,236 +23,47 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       TZ: Asia/Shanghai
     volumes:
-      # 命名卷：业务数据持久化，容器删除后数据仍保留
       - mysql-data:/var/lib/mysql
-      # 命名卷：binlog / 日志（配合 custom.cnf 演示数据安全与恢复）
       - mysql-logs:/var/log/mysql
-      # 只读挂载：初始化脚本，防止容器内篡改
-      - ./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./sql/init-minimal.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
       - ./docker/mysql/conf.d:/etc/mysql/conf.d:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 40s
-    # 安全设计：默认不映射 3306 到宿主机，仅 warehouse-net 内可访问
-    # 如需宿主机调试，取消下一行注释
-    # ports:
-    #   - "3306:3306"
+      retries: 12
+      start_period: 30s
 
-  # ========== 注册中心 ==========
-  nacos:
-    image: nacos/nacos-server:v2.2.3-slim
-    container_name: warehouse-nacos
-    restart: unless-stopped
-    networks:
-      warehouse-net:
-        ipv4_address: 172.28.0.11
-    environment:
-      MODE: standalone
-      PREFER_HOST_MODE: hostname
-      NACOS_AUTH_ENABLE: "false"
-      JVM_XMS: 256m
-      JVM_XMX: 512m
-    volumes:
-      - nacos-data:/home/nacos/data
-    ports:
-      - "${NACOS_PORT:-8848}:8848"
-
-  # ========== 消息队列 ==========
-  rocketmq-nameserver:
-    image: apache/rocketmq:4.9.7
-    container_name: warehouse-rocketmq-namesrv
-    restart: unless-stopped
-    networks:
-      warehouse-net:
-        ipv4_address: 172.28.0.12
-    command: sh mqnamesrv
-    volumes:
-      - rocketmq-namesrv-logs:/home/rocketmq/logs
-
-  rocketmq-broker:
-    image: apache/rocketmq:4.9.7
-    container_name: warehouse-rocketmq-broker
-    restart: unless-stopped
-    networks:
-      warehouse-net:
-        ipv4_address: 172.28.0.13
-    command: sh mqbroker -n rocketmq-nameserver:9876 -c /home/rocketmq/conf/broker.conf
-    depends_on:
-      - rocketmq-nameserver
-    volumes:
-      - ./docker/rocketmq/broker.conf:/home/rocketmq/conf/broker.conf:ro
-      - rocketmq-broker-store:/home/rocketmq/store
-      - rocketmq-broker-logs:/home/rocketmq/logs
-
-  # ========== Sentinel 控制台（可选中间件） ==========
-  sentinel:
-    image: blueriver/sentinel-dashboard:1.8.6
-    container_name: warehouse-sentinel
-    restart: unless-stopped
-    networks:
-      warehouse-net:
-        ipv4_address: 172.28.0.14
-    ports:
-      - "${SENTINEL_PORT:-8858}:8858"
-
-  # ========== 业务微服务 ==========
-  warehouse-user:
-    <<: *java-common
-    container_name: warehouse-user
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.service
-      args:
-        MODULE: warehouse-user
-    environment:
-      <<: *java-env
-      SERVER_PORT: 8081
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/warehouse_user?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_CLOUD_SENTINEL_TRANSPORT_PORT: 8720
-
-  warehouse-goods:
-    <<: *java-common
-    container_name: warehouse-goods
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.service
-      args:
-        MODULE: warehouse-goods
-    environment:
-      <<: *java-env
-      SERVER_PORT: 8082
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/warehouse_goods?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_CLOUD_SENTINEL_TRANSPORT_PORT: 8721
-
-  warehouse-base:
-    <<: *java-common
-    container_name: warehouse-base
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.service
-      args:
-        MODULE: warehouse-base
-    environment:
-      <<: *java-env
-      SERVER_PORT: 8083
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/warehouse_base?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_CLOUD_SENTINEL_TRANSPORT_PORT: 8722
-
-  warehouse-stock:
-    <<: *java-common
-    container_name: warehouse-stock
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.service
-      args:
-        MODULE: warehouse-stock
-    environment:
-      <<: *java-env
-      SERVER_PORT: 8084
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/warehouse_stock?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_CLOUD_SENTINEL_TRANSPORT_PORT: 8723
-
-  warehouse-inout:
-    <<: *java-common
-    container_name: warehouse-inout
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.service
-      args:
-        MODULE: warehouse-inout
-    environment:
-      <<: *java-env
-      SERVER_PORT: 8085
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/warehouse_inout?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_CLOUD_SENTINEL_TRANSPORT_PORT: 8724
-
-  warehouse-check:
-    <<: *java-common
-    container_name: warehouse-check
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.service
-      args:
-        MODULE: warehouse-check
-    environment:
-      <<: *java-env
-      SERVER_PORT: 8086
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/warehouse_check?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_CLOUD_SENTINEL_TRANSPORT_PORT: 8725
-
-  # ========== API 网关（Web 应用后端入口） ==========
-  warehouse-gateway:
-    <<: *java-common
-    container_name: warehouse-gateway
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.service
-      args:
-        MODULE: warehouse-gateway
-    depends_on:
-      mysql:
-        condition: service_healthy
-      nacos:
-        condition: service_started
-      warehouse-user:
-        condition: service_started
-      warehouse-goods:
-        condition: service_started
-      warehouse-base:
-        condition: service_started
-      warehouse-stock:
-        condition: service_started
-      warehouse-inout:
-        condition: service_started
-      warehouse-check:
-        condition: service_started
-    networks:
-      warehouse-net:
-        ipv4_address: 172.28.0.20
-    environment:
-      TZ: Asia/Shanghai
-      SERVER_PORT: 8070
-      SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
-      SPRING_CLOUD_SENTINEL_TRANSPORT_DASHBOARD: sentinel:8858
-      SPRING_CLOUD_SENTINEL_TRANSPORT_PORT: 8719
-    ports:
-      - "${GATEWAY_PORT:-8070}:8070"
-
-  # ========== Web 应用容器（Vue3 + Nginx） ==========
+  # ========== Web 应用容器（页面 + REST API） ==========
   warehouse-web:
     build:
       context: .
-      dockerfile: docker/Dockerfile.web
+      dockerfile: docker/Dockerfile.minimal
+    image: warehouse-web:minimal
     container_name: warehouse-web
     restart: unless-stopped
     networks:
       warehouse-net:
         ipv4_address: 172.28.0.21
     depends_on:
-      warehouse-gateway:
-        condition: service_started
+      mysql:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Shanghai
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 80
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/warehouse_goods?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     ports:
       - "${WEB_PORT:-80}:80"
 
-# ========== 数据卷（持久化存储） ==========
 volumes:
   mysql-data:
     name: warehouse-mysql-data
   mysql-logs:
     name: warehouse-mysql-logs
-  nacos-data:
-    name: warehouse-nacos-data
-  rocketmq-namesrv-logs:
-    name: warehouse-rocketmq-namesrv-logs
-  rocketmq-broker-store:
-    name: warehouse-rocketmq-broker-store
-  rocketmq-broker-logs:
-    name: warehouse-rocketmq-broker-logs
 
-# ========== 自定义桥接网络 ==========
 networks:
   warehouse-net:
     name: warehouse-net

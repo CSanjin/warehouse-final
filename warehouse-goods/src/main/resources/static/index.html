@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>仓储管理系统 - Docker 课程演示</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: "Segoe UI", sans-serif; margin: 0; background: #f5f7fa; color: #303133; }
+    header { background: #409eff; color: #fff; padding: 20px 24px; }
+    main { max-width: 960px; margin: 24px auto; padding: 0 16px 40px; }
+    .card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    h2 { margin: 0 0 12px; font-size: 18px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid #ebeef5; padding: 10px; text-align: left; }
+    th { background: #fafafa; }
+    input, button { padding: 8px 12px; margin: 4px 8px 4px 0; border: 1px solid #dcdfe6; border-radius: 4px; }
+    button { background: #409eff; color: #fff; border: none; cursor: pointer; }
+    button:hover { background: #66b1ff; }
+    .tag { display: inline-block; background: #ecf5ff; color: #409eff; padding: 2px 8px; border-radius: 4px; margin-right: 8px; font-size: 12px; }
+    .error { color: #f56c6c; }
+    .ok { color: #67c23a; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>仓储管理系统</h1>
+    <p>课程设计演示：Web 容器 + MySQL 容器 | 自定义网络 + 数据卷持久化</p>
+  </header>
+  <main>
+    <div class="card">
+      <h2>部署架构</h2>
+      <span class="tag">warehouse-web</span>
+      <span class="tag">warehouse-mysql</span>
+      <span class="tag">warehouse-net 172.28.0.0/16</span>
+      <span class="tag">命名卷 mysql-data</span>
+    </div>
+    <div class="card">
+      <h2>新增商品（验证数据持久化）</h2>
+      <input id="code" placeholder="商品编码" />
+      <input id="name" placeholder="商品名称" />
+      <input id="category" placeholder="分类" />
+      <input id="unit" placeholder="单位" value="个" />
+      <input id="price" placeholder="单价" type="number" step="0.01" />
+      <button onclick="addGoods()">保存到 MySQL</button>
+      <p id="msg"></p>
+    </div>
+    <div class="card">
+      <h2>商品列表（来自 MySQL）</h2>
+      <button onclick="loadGoods()">刷新</button>
+      <table>
+        <thead>
+          <tr><th>ID</th><th>编码</th><th>名称</th><th>分类</th><th>单位</th><th>单价</th></tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </main>
+  <script>
+    async function loadGoods() {
+      const tbody = document.getElementById('tbody');
+      const msg = document.getElementById('msg');
+      tbody.innerHTML = '<tr><td colspan="6">加载中...</td></tr>';
+      try {
+        const res = await fetch('/api/goods/page?current=1&size=50');
+        const json = await res.json();
+        const rows = (json.data && json.data.records) || [];
+        tbody.innerHTML = rows.length
+          ? rows.map(g => `<tr><td>${g.id}</td><td>${g.goodsCode}</td><td>${g.goodsName}</td><td>${g.category || ''}</td><td>${g.unit || ''}</td><td>${g.price ?? ''}</td></tr>`).join('')
+          : '<tr><td colspan="6">暂无数据</td></tr>';
+        msg.innerHTML = '<span class="ok">API 正常，数据来自 MySQL 容器</span>';
+      } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="6" class="error">加载失败</td></tr>';
+        msg.innerHTML = '<span class="error">无法连接后端，请检查容器是否启动完成</span>';
+      }
+    }
+    async function addGoods() {
+      const msg = document.getElementById('msg');
+      const body = {
+        goodsCode: document.getElementById('code').value,
+        goodsName: document.getElementById('name').value,
+        category: document.getElementById('category').value,
+        unit: document.getElementById('unit').value,
+        price: parseFloat(document.getElementById('price').value) || 0,
+        status: 1
+      };
+      if (!body.goodsCode || !body.goodsName) {
+        msg.innerHTML = '<span class="error">请填写编码和名称</span>';
+        return;
+      }
+      try {
+        const res = await fetch('/api/goods', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const json = await res.json();
+        if (json.code === 200) {
+          msg.innerHTML = '<span class="ok">保存成功！可执行 docker compose restart mysql 验证数据仍在</span>';
+          loadGoods();
+        } else {
+          msg.innerHTML = '<span class="error">' + (json.message || '保存失败') + '</span>';
+        }
+      } catch (e) {
+        msg.innerHTML = '<span class="error">保存失败</span>';
+      }
+    }
+    loadGoods();
+  </script>
+</body>
+</html>
