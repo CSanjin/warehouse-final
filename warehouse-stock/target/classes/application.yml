@@ -1,0 +1,62 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: warehouse-stock
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3306/warehouse_stock?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false
+    username: root
+    password: czx041226.
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+    sentinel:
+      transport:
+        dashboard: 127.0.0.1:8858
+        port: 8723
+      eager: true
+    openfeign:
+      sentinel:
+        enabled: true
+
+rocketmq:
+  name-server: 127.0.0.1:9876
+  producer:
+    group: warehouse-stock-producer-group
+
+# Seata 分支事务（RM），事务组与 inout 的 TC 集群 default 对应
+seata:
+  enabled: true
+  tx-service-group: warehouse-stock-seata-service-group
+  service:
+    vgroup-mapping:
+      warehouse-stock-seata-service-group: default
+  registry:
+    type: nacos
+    nacos:
+      application: seata-server
+      server-addr: 127.0.0.1:8848
+      group: SEATA_GROUP
+  config:
+    type: file
+  client:
+    undo:
+      log-serialization: kryo
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+      id-type: auto
+
+logging:
+  level:
+    com.warehouse: debug

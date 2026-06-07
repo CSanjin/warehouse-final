@@ -5,7 +5,8 @@
 #   docker compose up -d --build
 # 访问：http://localhost  （Web 容器，Nginx 反向代理 Gateway）
 
-name: warehouse-cluster
+
+version: "3.8"
 
 x-java-common: &java-common
   restart: unless-stopped
@@ -18,6 +19,8 @@ x-java-common: &java-common
       condition: service_started
   environment: &java-env
     TZ: Asia/Shanghai
+    # 优先使用自定义网段 IP 注册到 Nacos，保证容器间 Feign/Gateway 可互通
+    SPRING_CLOUD_INETUTILS_PREFERRED_NETWORKS: 172.28
     SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
     SPRING_DATASOURCE_USERNAME: root
     SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
@@ -48,7 +51,7 @@ services:
       - ./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
       - ./docker/mysql/conf.d:/etc/mysql/conf.d:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10

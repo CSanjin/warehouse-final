@@ -1,6 +1,7 @@
 # Docker 集群一键启动（Windows PowerShell）
 $ErrorActionPreference = "Stop"
-Set-Location $PSScriptRoot
+$RootDir = Split-Path $PSScriptRoot -Parent
+Set-Location $RootDir
 
 if (-not (Test-Path ".env")) {
     Copy-Item "docker\.env.example" ".env"

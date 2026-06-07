@@ -37,6 +37,9 @@
         <hutool.version>5.8.22</hutool.version>
         <kryo.version>4.0.2</kryo.version>
         <kryo-serializers.version>0.42</kryo-serializers.version>
+        <seata.version>1.5.2</seata.version>
+        <!-- Seata 1.4.x 依赖 cglib 3.1，在 JDK 17+ 上需打开模块访问 -->
+        <spring-boot.run.jvmArguments>--add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.lang.reflect=ALL-UNNAMED</spring-boot.run.jvmArguments>
     </properties>
 
     <dependencyManagement>
@@ -102,6 +105,11 @@
                 <artifactId>kryo-serializers</artifactId>
                 <version>${kryo-serializers.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.seata</groupId>
+                <artifactId>seata-spring-boot-starter</artifactId>
+                <version>${seata.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -112,6 +120,9 @@
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-maven-plugin</artifactId>
                     <version>${spring-boot.version}</version>
+                    <configuration>
+                        <jvmArguments>${spring-boot.run.jvmArguments}</jvmArguments>
+                    </configuration>
                     <executions>
                         <execution>
                             <goals>

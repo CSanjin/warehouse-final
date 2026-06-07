@@ -33,6 +33,15 @@ warehouse-microservice
 3. 在 `warehouse_inout`、`warehouse_stock` 库执行 `sql/init.sql` 中的 **`undo_log`** 表
 4. 若暂未部署 Seata，可在 `warehouse-inout` / `warehouse-stock` 的 `application.yml` 中设置 `seata.enabled: false`（将无法使用 `@GlobalTransactional` 分布式事务）
 
+### JDK 版本说明
+
+- 项目编译目标为 **Java 8**；Docker 镜像使用 Temurin 8 JRE。
+- 若在本地使用 **JDK 17+**（含 JDK 22/23）通过 IDE 启动 `warehouse-inout` / `warehouse-stock`，需在 VM Options 中加入：
+  ```
+  --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.lang.reflect=ALL-UNNAMED
+  ```
+  项目已在 `.run/InoutApplication.run.xml`、`.run/StockApplication.run.xml` 及 `mvn spring-boot:run` 中预置该参数（Seata 依赖的 cglib 在 JDK 17+ 上需要）。
+
 ## 快速启动
 
 1. 执行 `sql/init.sql` 初始化数据库
@@ -70,14 +79,23 @@ mvn clean install -DskipTests
 - Feign + Sentinel 熔断降级
 - RocketMQ Topic: `warehouse-stock-update-topic` 异步更新库存
 
-## Docker 容器化部署
+## Docker 容器化部署（Ubuntu 虚拟机 / Windows）
 
-项目提供 Docker Compose 集群方案，包含 **Web 容器 + MySQL 容器 + 自定义网络 + 数据卷**。
+项目提供 Docker Compose 集群方案，满足课程设计：**Web 容器 + MySQL 容器 + 数据卷 + 自定义网络**。
+
+**Ubuntu 虚拟机：**
 
 ```bash
-copy docker\.env.example .env
-docker compose up -d --build
+sudo bash docker/install-docker-ubuntu.sh   # 首次安装 Docker
+bash docker/start.sh                        # 构建并启动集群
+bash docker/verify.sh                       # 验收演示
 ```
 
-- Web 访问：http://localhost
+**Windows：**
+
+```powershell
+.\docker\start.ps1
+```
+
+- Web 访问：`http://<虚拟机IP>` 或 `http://localhost`
 - 详细说明见 [docker/README.md](docker/README.md)

@@ -1,0 +1,16 @@
+E:\code\Spring cloud\warehouse-cursor-第一版\warehouse-inout\src\main\java\com\warehouse\inout\controller\StockInOutController.java
+E:\code\Spring cloud\warehouse-cursor-第一版\warehouse-inout\src\main\java\com\warehouse\inout\entity\InoutRecord.java
+E:\code\Spring cloud\warehouse-cursor-第一版\warehouse-inout\src\main\java\com\warehouse\inout\entity\StockInOut.java
+E:\code\Spring cloud\warehouse-cursor-第一版\warehouse-inout\src\main\java\com\warehouse\inout\feign\GoodsFeignClient.java
+E:\code\Spring cloud\warehouse-cursor-第一版\warehouse-inout\src\main\java\com\warehouse\inout\feign\GoodsFeignClientFallbackFactory.java
+E:\code\Spring cloud\warehouse-cursor-第一版\warehouse-inout\src\main\java\com\warehouse\inout\feign\StockFeignClient.java
+E:\code\Spring cloud\warehouse-cursor-第一版\warehouse-inout\src\main\java\com\warehouse\inout\feign\StockFeignClientFallbackFactory.java
+E:\code\Spring cloud\warehouse-cursor-第一版\warehouse-inout\src\main\java\com\warehouse\inout\feign\WarehouseFeignClient.java
+E:\code\Spring cloud\warehouse-cursor-第一版\warehouse-inout\src\main\java\com\warehouse\inout\feign\WarehouseFeignClientFallbackFactory.java
+E:\code\Spring cloud\warehouse-cursor-第一版\warehouse-inout\src\main\java\com\warehouse\inout\InoutApplication.java
+E:\code\Spring cloud\warehouse-cursor-第一版\warehouse-inout\src\main\java\com\warehouse\inout\mapper\InoutRecordMapper.java
+E:\code\Spring cloud\warehouse-cursor-第一版\warehouse-inout\src\main\java\com\warehouse\inout\mapper\StockInOutMapper.java
+E:\code\Spring cloud\warehouse-cursor-第一版\warehouse-inout\src\main\java\com\warehouse\inout\mq\StockMqProducer.java
+E:\code\Spring cloud\warehouse-cursor-第一版\warehouse-inout\src\main\java\com\warehouse\inout\mq\StockUpdateConsumer.java
+E:\code\Spring cloud\warehouse-cursor-第一版\warehouse-inout\src\main\java\com\warehouse\inout\service\impl\StockInOutServiceImpl.java
+E:\code\Spring cloud\warehouse-cursor-第一版\warehouse-inout\src\main\java\com\warehouse\inout\service\StockInOutService.java

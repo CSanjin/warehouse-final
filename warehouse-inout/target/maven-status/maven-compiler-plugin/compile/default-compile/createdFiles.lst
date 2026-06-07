@@ -1,0 +1,16 @@
+com\warehouse\inout\entity\StockInOut.class
+com\warehouse\inout\feign\StockFeignClient.class
+com\warehouse\inout\feign\StockFeignClientFallbackFactory.class
+com\warehouse\inout\mapper\InoutRecordMapper.class
+com\warehouse\inout\service\impl\StockInOutServiceImpl.class
+com\warehouse\inout\mq\StockMqProducer.class
+com\warehouse\inout\service\StockInOutService.class
+com\warehouse\inout\mapper\StockInOutMapper.class
+com\warehouse\inout\entity\InoutRecord.class
+com\warehouse\inout\InoutApplication.class
+com\warehouse\inout\feign\WarehouseFeignClientFallbackFactory.class
+com\warehouse\inout\feign\GoodsFeignClient.class
+com\warehouse\inout\feign\GoodsFeignClientFallbackFactory.class
+com\warehouse\inout\mq\StockUpdateConsumer.class
+com\warehouse\inout\feign\WarehouseFeignClient.class
+com\warehouse\inout\controller\StockInOutController.class
